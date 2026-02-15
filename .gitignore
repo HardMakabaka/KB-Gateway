@@ -1,0 +1,13 @@
+# binaries
+/bin/
+/dist/
+
+# local env
+.env
+
+# editor
+.vscode/
+.idea/
+
+# OS
+.DS_Store
