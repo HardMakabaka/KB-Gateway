@@ -20,6 +20,7 @@ type Server struct {
 	qdrant   *qdrant.Client
 	embedder embed.Embedder
 	chunkCfg chunk.Config
+	docLocks KeyedMutex
 }
 
 func NewServer(cfg config.Config) http.Handler {
@@ -52,11 +53,14 @@ func NewServer(cfg config.Config) http.Handler {
 		r.Post("/search", s.handleSearch)
 	})
 
-	// Ensure Qdrant collection on startup.
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		_ = s.qdrant.EnsureCollection(ctx, cfg.Qdrant.Collection, s.embedder.Dim())
+		if err := s.qdrant.EnsureCollection(ctx, cfg.Qdrant.Collection, s.embedder.Dim()); err != nil {
+			log.Printf("ensure qdrant collection failed: %v", err)
+		}
+		// Ensure deleted=false is present for new docs; we rely on matchBool("deleted", false).
+		// (If missing, qdrant match will not match; v1 requires deleted field to be always set.)
 	}()
 
 	return r
