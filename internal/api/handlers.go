@@ -242,3 +242,73 @@ func hashString(s string) string {
 	h := sha256.Sum256([]byte(s))
 	return hex.EncodeToString(h[:])
 }
+
+type deleteRequest struct {
+	ProjectID string `json:"project_id"`
+	DocID     string `json:"doc_id"`
+	Hard      bool   `json:"hard"`
+}
+
+func (s *Server) handleDelete(w http.ResponseWriter, r *http.Request) {
+	var req deleteRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid_json"})
+		return
+	}
+	if req.ProjectID == "" || req.DocID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "missing_fields"})
+		return
+	}
+
+	unlock := s.docLocks.Lock(req.ProjectID + ":" + req.DocID)
+	defer unlock()
+
+	f := qdrant.Filter{"must": []any{
+		map[string]any{"key": "project_id", "match": map[string]any{"value": req.ProjectID}},
+		map[string]any{"key": "doc_id", "match": map[string]any{"value": req.DocID}},
+	}}
+
+	if req.Hard {
+		if err := s.qdrant.DeleteByFilter(r.Context(), s.cfg.Qdrant.Collection, f); err != nil {
+			writeJSON(w, http.StatusBadGateway, map[string]any{"error": "qdrant_delete_failed", "detail": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+		return
+	}
+
+	// Soft delete: mark deleted and deactivate all versions.
+	payload := map[string]any{"deleted": true, "is_active": false, "updated_at": time.Now().UTC().Unix()}
+	if err := s.qdrant.SetPayload(r.Context(), s.cfg.Qdrant.Collection, payload, f); err != nil {
+		writeJSON(w, http.StatusBadGateway, map[string]any{"error": "qdrant_delete_failed", "detail": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+type rollbackRequest struct {
+	ProjectID        string `json:"project_id"`
+	DocID            string `json:"doc_id"`
+	TargetDocVersion string `json:"target_doc_version"`
+}
+
+func (s *Server) handleRollback(w http.ResponseWriter, r *http.Request) {
+	var req rollbackRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid_json"})
+		return
+	}
+	if req.ProjectID == "" || req.DocID == "" || req.TargetDocVersion == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "missing_fields"})
+		return
+	}
+
+	unlock := s.docLocks.Lock(req.ProjectID + ":" + req.DocID)
+	defer unlock()
+
+	if err := s.activateLocked(r.Context(), req.ProjectID, req.DocID, req.TargetDocVersion); err != nil {
+		writeJSON(w, http.StatusBadGateway, map[string]any{"error": "rollback_failed", "detail": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}

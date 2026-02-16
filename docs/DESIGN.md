@@ -96,6 +96,25 @@ Input:
 Output:
 - results[] with citations
 
+### POST /v1/docs/delete
+Input:
+- project_id
+- doc_id
+- hard (bool)
+
+Behavior:
+- `hard=false`: soft delete (set `deleted=true`, `is_active=false` for all versions)
+- `hard=true`: delete points by filter
+
+### POST /v1/docs/rollback
+Input:
+- project_id
+- doc_id
+- target_doc_version
+
+Behavior:
+- Alias of activate semantics: deactivate current active, activate target version
+
 ## Chunking
 - v1: recursive text splitting with overlap.
 - markdown: header-aware splitting (best-effort) before recursive fallback.

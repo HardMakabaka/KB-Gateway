@@ -50,6 +50,8 @@ func NewServer(cfg config.Config) http.Handler {
 	r.Route("/v1", func(r chi.Router) {
 		r.Post("/docs/ingest", s.handleIngest)
 		r.Post("/docs/activate", s.handleActivate)
+		r.Post("/docs/delete", s.handleDelete)
+		r.Post("/docs/rollback", s.handleRollback)
 		r.Post("/search", s.handleSearch)
 	})
 
