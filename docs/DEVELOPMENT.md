@@ -21,7 +21,40 @@ KBG_QDRANT_COLLECTION=kb_chunks \
 make run
 ```
 
-> If `OPENAI_API_KEY` is not set, the service uses a deterministic **FakeEmbedder** (dev-only) so you can still run end-to-end.
+> If `EMBED_PROVIDER=openai` (default) and `OPENAI_API_KEY` is not set, the service uses a deterministic **FakeEmbedder** (dev-only) so you can still run end-to-end.
+
+### Embedding Providers
+
+Set `KBG_EMBED_PROVIDER` to choose a backend:
+
+**OpenAI** (default):
+```bash
+KBG_EMBED_PROVIDER=openai \
+KBG_OPENAI_API_KEY=sk-... \
+KBG_EMBED_MODEL=text-embedding-3-small \
+KBG_EMBED_DIM=1536 \
+make run
+```
+
+**Ollama** (local):
+```bash
+KBG_EMBED_PROVIDER=ollama \
+KBG_OLLAMA_URL=http://localhost:11434 \
+KBG_OLLAMA_MODEL=bge-m3 \
+KBG_EMBED_DIM=1024 \
+make run
+```
+
+**OpenAI-compatible** (vLLM, LocalAI, etc.):
+```bash
+KBG_EMBED_PROVIDER=openai-compatible \
+KBG_COMPATIBLE_URL=http://localhost:8000/v1 \
+KBG_COMPATIBLE_MODEL=bge-m3 \
+KBG_EMBED_DIM=1024 \
+make run
+```
+
+> `KBG_EMBED_DIM` must match the actual model output dimension and the Qdrant collection vector size.
 
 ### 3) Smoke test
 Ingest a short internal-public doc (short docs are accepted; chunker fallback ensures we never send an empty upsert).

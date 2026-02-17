@@ -27,15 +27,11 @@ func NewServer(cfg config.Config) http.Handler {
 	s := &Server{cfg: cfg}
 	s.qdrant = qdrant.New(cfg.Qdrant.URL, cfg.Qdrant.Timeout)
 
-	// v1: use fake embedder if no API key configured to keep local dev unblocked.
-	if cfg.Embed.APIKey == "" {
-		log.Printf("warning: OPENAI_API_KEY not set; using fake embedder")
-		s.embedder = embed.NewFake(384)
-	} else {
-		// TODO: implement OpenAI embedder
-		log.Printf("warning: OpenAI embedder not implemented yet; using fake embedder")
-		s.embedder = embed.NewFake(384)
+	embedder, err := embed.New(cfg.Embed)
+	if err != nil {
+		log.Fatalf("embed provider init: %v", err)
 	}
+	s.embedder = embedder
 
 	s.chunkCfg = chunk.Config{MaxChars: cfg.Chunk.MaxChars, Overlap: cfg.Chunk.Overlap, MinChars: cfg.Chunk.MinChars, HardLimit: cfg.Chunk.HardLimit}
 

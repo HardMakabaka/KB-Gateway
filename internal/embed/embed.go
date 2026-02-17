@@ -4,11 +4,34 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/binary"
+	"fmt"
+	"log"
+
+	"github.com/HardMakabaka/KB-Gateway/internal/config"
 )
 
 type Embedder interface {
 	Embed(ctx context.Context, inputs []string) ([][]float32, error)
 	Dim() int
+}
+
+const fakeDim = 384
+
+func New(cfg config.EmbedConfig) (Embedder, error) {
+	switch cfg.Provider {
+	case "openai":
+		if cfg.APIKey == "" {
+			log.Printf("warning: OPENAI_API_KEY not set; using fake embedder")
+			return NewFake(fakeDim), nil
+		}
+		return NewOpenAI(cfg.APIKey, cfg.Model, cfg.Dim), nil
+	case "ollama":
+		return NewOllama(cfg.OllamaURL, cfg.OllamaModel, cfg.Dim), nil
+	case "openai-compatible":
+		return NewCompatible(cfg.CompatibleURL, cfg.CompatibleModel, cfg.Dim), nil
+	default:
+		return nil, fmt.Errorf("unknown embed provider: %q (supported: openai, ollama, openai-compatible)", cfg.Provider)
+	}
 }
 
 // FakeEmbedder is a deterministic embedder for local dev/tests when no API key is configured.
