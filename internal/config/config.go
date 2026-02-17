@@ -25,9 +25,14 @@ type QdrantConfig struct {
 }
 
 type EmbedConfig struct {
-	Provider string `envconfig:"EMBED_PROVIDER" default:"openai"`
-	Model    string `envconfig:"EMBED_MODEL" default:"text-embedding-3-small"`
-	APIKey   string `envconfig:"OPENAI_API_KEY" default:""`
+	Provider        string `envconfig:"EMBED_PROVIDER" default:"openai"`
+	Model           string `envconfig:"EMBED_MODEL" default:"text-embedding-3-small"`
+	APIKey          string `envconfig:"OPENAI_API_KEY" default:""`
+	Dim             int    `envconfig:"EMBED_DIM" default:"1536"`
+	OllamaURL       string `envconfig:"OLLAMA_URL" default:"http://localhost:11434"`
+	OllamaModel     string `envconfig:"OLLAMA_MODEL" default:"bge-m3"`
+	CompatibleURL   string `envconfig:"COMPATIBLE_URL" default:"http://localhost:8000/v1"`
+	CompatibleModel string `envconfig:"COMPATIBLE_MODEL" default:"bge-m3"`
 }
 
 type ChunkConfig struct {
